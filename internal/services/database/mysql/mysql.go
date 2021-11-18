@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/meoera/doorman/internal/models"
+	"github.com/meoera/doorman/pkg/models"
 	"github.com/meoera/doorman/internal/services/database"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -13,11 +13,11 @@ import (
 const MYSQL_DSN = "%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local"
 
 var (
-	ErrInvalidHost     = errors.New("The specified MySQL host is invalid")
-	ErrInvalidPort     = errors.New("The specified MySQL port is invalid")
-	ErrInvalidUser     = errors.New("The specified MySQL user is invalid!")
-	ErrInvalidPassword = errors.New("The specified MySQL password is invalid!")
-	ErrInvalidDbName   = errors.New("The specified MySQL database-name is invalid!")
+	ErrInvalidHost     error = errors.New("the specified MySQL host is invalid")
+	ErrInvalidPort     error = errors.New("the specified MySQL port is invalid")
+	ErrInvalidUser     error = errors.New("the specified MySQL user is invalid")
+	ErrInvalidPassword error = errors.New("the specified MySQL password is invalid")
+	ErrInvalidDbName   error = errors.New("the specified MySQL database-name is invalid")
 )
 
 type MySQL struct {
@@ -68,7 +68,27 @@ func (db *MySQL) Connect(credentials ...interface{}) (err error) {
 	return
 }
 
+func (db *MySQL) Close() (err error) {
+	sqldb, err := db.connector.DB()
+	if err != nil {
+		return
+	}
+
+	return sqldb.Close()
+}
+
 func (db *MySQL) UserByID(id int) (result *models.DatabaseUser, err error) {
 	err = db.connector.First(result, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return
+}
+
+func (db *MySQL) UserByName(name string) (result *models.DatabaseUser, err error) {
+	err = db.connector.First(result, "username = ?", name).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	return
 }

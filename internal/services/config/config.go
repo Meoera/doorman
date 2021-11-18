@@ -17,21 +17,33 @@ type Config struct {
 
 type Web struct {
 	Host string `json:"host"`
+	SingingSecret string `json:"secret"`
 }
 
 type Database struct {
+	MySQL *MySQL `json:"mysql"`
 	Redis *Redis `json:"redis"`
+}
+
+type MySQL struct {
+	Host string `json:"host"`
+	Port uint `json:"port"`
+
+	User     string `json:"user"`
+	Password string `json:"password"`
+	Database uint `json:"database"`
 }
 
 type Redis struct {
 	Host string `json:"host"`
-	Port int    `json:"port"`
+	Port uint   `json:"port"`
 
 	Username string `json:"username"`
 	Password string `json:"password"`
-	Database int    `json:"database"`
-}
+	Database uint   `json:"database"`
 
+	StandartExpiration int64 `json:"standart_expiration"`
+}
 
 func Parse(path string) (cfg *Config, err error) {
 	if path == "" {
@@ -43,9 +55,11 @@ func Parse(path string) (cfg *Config, err error) {
 		return
 	}
 
+
 	cfg = &Config{
 		Web: &Web{},
 		Database: &Database{
+			MySQL: &MySQL{},
 			Redis: &Redis{},
 		},
 	}

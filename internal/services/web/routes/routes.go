@@ -1,33 +1,94 @@
 package routes
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/meoera/doorman/pkg/token"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/meoera/doorman/internal/models"
 	"github.com/meoera/doorman/internal/services/config"
+	"github.com/meoera/doorman/internal/services/database"
 	"github.com/meoera/doorman/internal/services/web"
+	"github.com/meoera/doorman/pkg/hasher"
+	"github.com/meoera/doorman/pkg/models"
 )
 
-func Add(cfg *config.Web, redisCfg *config.Redis, devMode bool) {
+func Add(cfg *config.Web, db database.Database, cacheDb database.CacheDatabase, devMode bool) {
 
 	web.Server.Post("/login", func(c *fiber.Ctx) (err error) {
 		c.Accepts("application/json")
 		c.AcceptsCharsets("utf-8")
 
-		body := &models.AuthBody{}
+		body := &models.AuthRequestBody{}
 		err = c.BodyParser(body)
 		if err != nil {
 			if devMode {
 				return c.SendString(err.Error())
+			} else {
+				fmt.Println(err)
 			}
 		}
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Bad Credentials!",
-		})
+
+		dbRecord, err := db.UserByName(body.Username)
+		if dbRecord == nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": "Bad Credentials!",
+			})
+		}
+		if err != nil {
+			if devMode {
+				panic(err)
+			}
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"message": "An error occured! Try again later!",
+			})
+		}
+
+		ok, err := hasher.ComparePasswords(dbRecord.PasswordHash, body.Password, dbRecord.Salt, nil)
+		if err != nil {
+			if devMode {
+				panic(err)
+			}
+		}
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": "Bad Credentials!",
+			})
+		} else {
+			accessToken, err := token.New(cfg.SingingSecret, "", dbRecord.Username, dbRecord.ID, 45)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"message": "An error occured! Try again later!",
+				})
+			}
+			refreshToken, err := token.New(cfg.SingingSecret, "", dbRecord.Username, dbRecord.ID, 180)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"message": "An error occured! Try again later!",
+				})
+			}
+
+
+			return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+				"access_token": accessToken,
+				"refresh_token": refreshToken,
+			})
+		}
 	})
 
 	web.Server.Post("/refresh", func(c *fiber.Ctx) (err error) {
 		c.Accepts("application/json")
 		c.AcceptsCharsets("utf-8")
+
+		tokenHeader := c.Get("Authorization", "")
+		if !strings.HasPrefix(tokenHeader, "Bearer ") {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": "Your Authorization Header is invalid!",
+			})
+		}
+
+		
 
 		return
 	})

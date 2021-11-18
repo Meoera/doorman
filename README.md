@@ -1,5 +1,5 @@
 # doorman
-## auth service of Meoera backend
+## the auth service of the Meoera backend
 
 ## Requirements
 Docker
