@@ -77,7 +77,7 @@ func (db *MySQL) Close() (err error) {
 	return sqldb.Close()
 }
 
-func (db *MySQL) UserByID(id int) (result *models.DatabaseUser, err error) {
+func (db *MySQL) UserByID(id uint) (result *models.DatabaseUser, err error) {
 	err = db.connector.First(result, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
