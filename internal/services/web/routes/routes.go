@@ -3,10 +3,12 @@ package routes
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/meoera/doorman/pkg/token"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/meoera/doorman/internal/services/config"
 	"github.com/meoera/doorman/internal/services/database"
 	"github.com/meoera/doorman/internal/services/web"
@@ -15,6 +17,21 @@ import (
 )
 
 func Add(cfg *config.Web, db database.Database, cacheDb database.CacheDatabase, devMode bool) {
+
+	if !devMode {
+		web.Server.Use(limiter.New(limiter.Config{
+			Max: int(cfg.AllowedRequestsPerMinute),
+			Expiration: 1 * time.Minute,
+			KeyGenerator: func(c *fiber.Ctx) string {
+				return c.IP()
+			},
+			LimitReached: func(c *fiber.Ctx) error {
+				return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+					"message": "You send too many requests",
+				})
+			},
+		}))
+	}
 
 	web.Server.Post("/login", func(c *fiber.Ctx) (err error) {
 		c.Accepts("application/json")
@@ -69,9 +86,8 @@ func Add(cfg *config.Web, db database.Database, cacheDb database.CacheDatabase, 
 				})
 			}
 
-
 			return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-				"access_token": accessToken,
+				"access_token":  accessToken,
 				"refresh_token": refreshToken,
 			})
 		}
@@ -87,8 +103,6 @@ func Add(cfg *config.Web, db database.Database, cacheDb database.CacheDatabase, 
 				"message": "Your Authorization Header is invalid!",
 			})
 		}
-
-		
 
 		return
 	})

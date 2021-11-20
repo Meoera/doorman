@@ -18,6 +18,7 @@ type Config struct {
 type Web struct {
 	Host string `json:"host"`
 	SingingSecret string `json:"secret"`
+	AllowedRequestsPerMinute uint `json:"request_per_minute_limit"`
 }
 
 type Database struct {
