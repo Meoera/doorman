@@ -18,7 +18,7 @@ var (
 //expiration in minutes
 func New(secret, issuer, subject string, uid, expiration uint) (string, error) {
 	tNow := time.Now()
-	if secret != "" {
+	if secret == "" {
 		return "", ErrInvalidSecret
 	} else if expiration == 0 {
 		return "", ErrExpirationNotValid
@@ -38,7 +38,7 @@ func New(secret, issuer, subject string, uid, expiration uint) (string, error) {
 
 	tokenObject := jwt.NewWithClaims(jwt.SigningMethodHS512, claims) 
 
-	return tokenObject.SignedString(secret)
+	return tokenObject.SignedString([]byte(secret))
 }
 
 func ValidateAuth(secret, token string) (bool, error) {
