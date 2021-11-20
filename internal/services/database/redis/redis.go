@@ -7,30 +7,34 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/meoera/doorman/internal/services/config"
 	"github.com/meoera/doorman/internal/services/database"
 	"github.com/meoera/doorman/pkg/models"
 )
 
 var (
-	ErrUnspecifiedConfig error = errors.New("you didn't specify a config")
-	ErrInvalidConfig error = errors.New("the config you specified is invalid")
-	ErrInvalidExpiration error = errors.New("invalid expiration time")
+	ErrUnspecifiedConfig       error = errors.New("you didn't specify a config")
+	ErrUnspecifiedMainDatabase error = errors.New("you didn't specify a main database")
+	ErrInvalidConfig           error = errors.New("the config you specified is invalid")
+	ErrInvalidExpiration       error = errors.New("invalid expiration time")
 )
 
 var (
 	UserStorePattern = "u:%d"
+	TokenStorePattern = "rtoken:%d"
 )
 
 //the redis "connector" for the auth backend
 type Redis struct {
-	database.CacheDatabase
 
 	client redis.Client
-	db database.Database
+	db     database.Database
 
 	cfg *config.Redis
+}
+
+func (db *Redis) Client() redis.Client {
+	return db.client
 }
 
 func (db *Redis) Connect(maindb database.Database, credentials ...interface{}) error {
@@ -40,14 +44,16 @@ func (db *Redis) Connect(maindb database.Database, credentials ...interface{}) e
 
 	if maindb != nil {
 		db.db = maindb
+	} else {
+		return ErrUnspecifiedMainDatabase
 	}
 
-	cfg, ok := credentials[0].(*config.Redis) 
+	cfg, ok := credentials[0].(*config.Redis)
 	if !ok {
 		return ErrInvalidConfig
 	}
 
-	db.cfg = cfg 
+	db.cfg = cfg
 
 	newClient := redis.NewClient(&redis.Options{
 		Addr:     cfg.Host + ":" + fmt.Sprint(cfg.Port),
@@ -55,7 +61,6 @@ func (db *Redis) Connect(maindb database.Database, credentials ...interface{}) e
 		Password: cfg.Password,
 		DB:       int(cfg.Database),
 	})
-
 
 	db.client = *newClient
 	return nil
@@ -65,8 +70,8 @@ func (db *Redis) Close() error {
 	return db.client.Close()
 }
 
-func (db *Redis) UserByID(id int) (model *models.DatabaseUser, err error) {
-	exists := db.client.Exists(context.Background(), fmt.Sprintf(UserStorePattern, id));
+func (db *Redis) UserByID(id uint) (model *models.DatabaseUser, err error) {
+	exists := db.client.Exists(context.Background(), fmt.Sprintf(UserStorePattern, id))
 	if exists.Err() != nil {
 		return nil, exists.Err()
 	} else if exists.Val() != 1 {
@@ -79,10 +84,10 @@ func (db *Redis) UserByID(id int) (model *models.DatabaseUser, err error) {
 
 		tNow := time.Now()
 		db.client.SetEX(
-			context.Background(), 
-			fmt.Sprintf(UserStorePattern, id), 
-			model, 
-			time.Duration(tNow.Unix() - tNow.Add(time.Duration(db.cfg.StandartExpiration)).Unix()) * time.Second,
+			context.Background(),
+			fmt.Sprintf(UserStorePattern, id),
+			model,
+			time.Duration(tNow.Unix()-tNow.Add(time.Duration(db.cfg.StandartExpiration)).Unix())*time.Second,
 		)
 	}
 
@@ -92,18 +97,17 @@ func (db *Redis) UserByID(id int) (model *models.DatabaseUser, err error) {
 	return
 }
 
+func (db *Redis) UserByName(name string) (*models.DatabaseUser, error) {
+	return db.db.UserByName(name)
+}
 
 
-func (db *Redis) AddRefreshToken(token jwt.Token) (err error) {
-	claims := token.Claims.(jwt.MapClaims)
-	claimExp, ok := claims["exp"].(int64)
-	if !ok {
-		return errors.New("invalid expiration time")
-	}
-	err = db.client.SetNX(context.Background(), "rtoken:"+fmt.Sprint(claims["uid"]), token, time.Duration(claimExp - time.Now().Unix())).Err()
+func (db *Redis) AddRefreshToken(token string, uid, exp uint) (err error) {
+	_, err = db.client.SetEX(context.Background(), fmt.Sprintf(TokenStorePattern, uid), token, time.Duration(int64(exp)-time.Now().Unix()) * time.Second).Result()
 	if err != nil {
 		return
 	}
+
 
 	return
 }
