@@ -1,7 +1,6 @@
 package database
 
 import (
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/meoera/doorman/pkg/models"
 )
 
@@ -9,7 +8,7 @@ import (
 type Database interface {
 	Connect(credentials ...interface{}) error
 	Close() error
-	UserByID(id int) (*models.DatabaseUser, error)
+	UserByID(id uint) (*models.DatabaseUser, error)
 	UserByName(name string) (*models.DatabaseUser, error)
 }
 
@@ -17,7 +16,7 @@ type Database interface {
 type CacheDatabase interface {
 	Connect(db Database, credentials ...interface{}) error
 	Close() error
-	UserByID(id int) (*models.DatabaseUser, error)
+	UserByID(id uint) (*models.DatabaseUser, error)
 	UserByName(name string) (*models.DatabaseUser, error)
-	AddRefreshToken(token jwt.Token) (error)
+	AddRefreshToken(token string, uid, exp uint) (error)
 }
