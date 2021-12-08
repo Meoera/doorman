@@ -1,5 +1,5 @@
-# doorman
-## the auth service of the Meoera backend
+# Doorman
+## the auth service
 
 ## Requirements
-Docker
+Docker _or_ GoLang, Redis, MariaDB/MySQL
