@@ -27,7 +27,7 @@ func New(secret, issuer, subject string, uid, expiration uint) (string, error) {
 	claims := jwt.MapClaims{
 		"iat": tNow.Unix(),
 		"exp": tNow.Add(time.Duration(expiration) * time.Minute).Unix(),
-		"uid": base64.RawStdEncoding.EncodeToString([]byte(fmt.Sprint(uid))),
+		"uid": fmt.Sprint(uid),
 	}
 	if issuer != "" {
 		claims["iss"] = issuer
