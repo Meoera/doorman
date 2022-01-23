@@ -1,7 +1,6 @@
 package token
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
@@ -10,8 +9,8 @@ import (
 )
 
 var (
-	ErrInvalidSecret    = errors.New("the secret you specified is invalid")
-	ErrInvalidToken = errors.New("token not specified")
+	ErrInvalidSecret      = errors.New("the secret you specified is invalid")
+	ErrInvalidToken       = errors.New("token not specified")
 	ErrExpirationNotValid = errors.New("the expiration time you specified is invalid")
 )
 
@@ -36,7 +35,7 @@ func New(secret, issuer, subject string, uid, expiration uint) (string, error) {
 		claims["sub"] = subject
 	}
 
-	tokenObject := jwt.NewWithClaims(jwt.SigningMethodHS512, claims) 
+	tokenObject := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 
 	return tokenObject.SignedString(secret)
 }
@@ -54,7 +53,6 @@ func ValidateAuth(secret, token string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
 
 	if !tokenObject.Valid {
 		return false, nil
