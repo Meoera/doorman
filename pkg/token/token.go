@@ -60,3 +60,22 @@ func ValidateAuth(secret, token string) (bool, error) {
 		return true, nil
 	}
 }
+
+func Claims(secret, token string) (claims jwt.MapClaims, valid bool, err error) {
+	object, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		return secret, nil
+	})
+	if err != nil {
+		return
+	}
+
+	claims, ok := object.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, false, nil
+	}
+	if object.Valid {
+		valid = true
+	}
+
+	return
+}
