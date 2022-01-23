@@ -18,6 +18,8 @@ type Config struct {
 type Web struct {
 	Host string `json:"host"`
 	SingingSecret string `json:"secret"`
+	AccessTokenExpiry uint `json:"accesstoken_expiry"`
+	RefreshTokenExpiry uint `json:"refreshtoken_expiry"`
 }
 
 type Database struct {
