@@ -13,7 +13,6 @@ const DEFAULT_CONFIG_PATH string = "./config.json"
 
 var configFlag = flag.String("c", DEFAULT_CONFIG_PATH, "Config File Path")
 
-var devFlag = flag.Bool("d", false, "Developing mode")
 
 func main() {
 	flag.Parse()
@@ -38,7 +37,7 @@ func main() {
 	}
 	defer cdb.Close()
 		
-	err = inits.Web(cfg.Web, db, cdb, *devFlag)
+	err = inits.Web(cfg.Web, db, cdb)
 	if err != nil {
 		panic(err)
 	}
